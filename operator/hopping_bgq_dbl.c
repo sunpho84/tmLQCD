@@ -26,8 +26,9 @@
 
 #include "bgq.h"
 #include "xlc_prefetch.h"
+#include "remap.h"
 
-void Hopping_Matrix(const int ieo, spinor * const l, spinor * const k) {
+void Hopping_Matrix_Standard(const int ieo, spinor * const l, spinor * const k) {
 #pragma disjoint(*l, *k)
 #ifdef _GAUGE_COPY
   if(g_update_gauge_copy) {
@@ -196,4 +197,38 @@ void Hopping_Matrix(const int ieo, spinor * const l, spinor * const k) {
   } /* OpenMP closing brace */
 #endif
   return;
+}
+
+void Hopping_Matrix(const int ieo,spinor *const l,spinor *const k)
+{
+  color_spinor *rema_k=(color_spinor*)k;
+  color_spinor *rema_l=(color_spinor*)l;
+  
+  switch(g_remapping)
+    {
+      //standard case: no reamp
+    case NO_REMAP:
+      Hopping_Matrix_Standard(ieo,l,k);
+      break;
+      //benchmark the remapping
+    case BENCH_REMAP:
+      global_remap_spinor_into_color_spinor(rema_k,k,VOLUME/2);
+      if(g_proc_id==0) printf("# remapped (1/4)\n");
+      global_remap_color_spinor_into_spinor(k,rema_k,VOLUME/2);
+      if(g_proc_id==0) printf("# remapped (2/4)\n");
+      Hopping_Matrix_Standard(ieo,l,k);
+      global_remap_spinor_into_color_spinor(rema_l,l,VOLUME/2);
+      if(g_proc_id==0) printf("# remapped (3/4)\n");
+      global_remap_color_spinor_into_spinor(l,rema_l,VOLUME/2);
+      if(g_proc_id==0) printf("# remapped (4/4)\n");
+      break;
+      //break trough the default since remapped operator has not yet been implemented
+    case DO_REMAP:
+    default:
+      if(g_proc_id==0)
+	{
+	  fprintf(stderr,"Operation %d not implemented yet\n",g_remapping);
+	  MPI_Abort(MPI_COMM_WORLD,1);
+	}
+    }  
 }
