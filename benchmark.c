@@ -98,6 +98,7 @@ int main(int argc,char *argv[])
   int status = 0;
   
   static double t1,t2,dt,sdt,dts,qdt,sqdt;
+  static double norm_exec_time,remap_overhead_time,dirac_appl_overhead_time,remap_exec_time_saving;
   double antioptaway=0.0;
 #ifdef MPI
   static double dt2;
@@ -252,7 +253,7 @@ int main(int argc,char *argv[])
 #endif
   
   if(even_odd_flag) {
-    for(g_remapping=0;g_remapping<2;g_remapping++)
+    for(g_remapping=0;g_remapping<3;g_remapping++)
       {
 	if(g_proc_id==0) printf("# Remapping level: %d\n",g_remapping);
 	/*initialize the pseudo-fermion fields*/
@@ -299,6 +300,22 @@ int main(int argc,char *argv[])
 	sqdt=1.0e6f*sqdt/((double)(k_max*j_max*(VOLUME)));
 	
 	if(g_proc_id==0) {
+	  switch(g_remapping)
+	    {
+	    case 0: norm_exec_time=sdt;break;
+	    case 1: remap_overhead_time=sdt-norm_exec_time;break;
+	    case 2: dirac_appl_overhead_time=norm_exec_time-sdt;break;
+	    case 3:
+	      remap_exec_time_saving=sdt-norm_exec_time-remap_overhead_time;
+	      printf("# remapping overhead: %lg%s\n",100*remap_overhead_time/norm_exec_time,"%");
+	      printf("# application overhead: %lg%s\n",100*dirac_appl_overhead_time/norm_exec_time,"%");
+	      printf("# remapping improvement: %lg%s\n",100*remap_exec_time_saving/norm_exec_time,"%");
+	      break;
+	    default:
+	      break;
+
+	    }
+	  
 	  printf("# The following result is just to make sure that the calculation is not optimized away: %e\n", antioptaway);
 	  printf("# Total compute time %e sec, variance of the time %e sec. (%d iterations).\n", sdt, sqdt, j_max);
 	  printf("# Communication switched on:\n# (%d Mflops [%d bit arithmetic])\n", (int)(1320.0f/sdt),(int)sizeof(spinor)/3);

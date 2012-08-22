@@ -336,7 +336,7 @@ inline void vec_cmplx_mul_double2(vector4double * restrict rs, vector4double * r
   return;
 }
 
-#define _vec_cmplxcg_mul_double2(rs0, rs1, rs2, rs3, rs4, rs5, r0, r1, r2, r3, r4, r5, tmp) \
+#define _vec_cmplxcg_mul_double2(rs0, rs1, rs2, rs3, rs4, rs5, r0, r1, r2, r3, r4, r5, rtmp) \
   rs0 = vec_xmul(rtmp, r0);						\
   rs1 = vec_xmul(rtmp, r1);						\
   rs2 = vec_xmul(rtmp, r2);						\
@@ -350,7 +350,7 @@ inline void vec_cmplx_mul_double2(vector4double * restrict rs, vector4double * r
   rs4 = vec_xxcpnmadd(r4, rtmp, rs4);					\
   rs5 = vec_xxcpnmadd(r5, rtmp, rs5);					\
 
-#define _vec_cmplxcg_mul_double2c(rs0, rs1, rs2, r0, r1, r2, tmp) \
+#define _vec_cmplxcg_mul_double2c(rs0, rs1, rs2, r0, r1, r2, rtmp) \
   rs0 = vec_xmul(rtmp, r0);						\
   rs1 = vec_xmul(rtmp, r1);						\
   rs2 = vec_xmul(rtmp, r2);						\
