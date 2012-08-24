@@ -193,177 +193,19 @@ void Hopping_Matrix_Standard(const int ieo, spinor * const l, spinor * const k) 
     _hop_z_m();
 
     _store_res();
-  }
-#ifdef OMP
-  } /* OpenMP closing brace */
-#endif
-  return;
-}
-
-void Hopping_Matrix_Fake(const int ieo, color_spinor * const l, color_spinor * const k) {
-#pragma disjoint(*l, *k)
-#ifdef _GAUGE_COPY
-  if(g_update_gauge_copy) {
-    update_backward_gauge(g_gauge_field);
-  }
-#endif
-
-#if (defined MPI && !(defined _NO_COMM))
-  xchange_field((spinor*)k, ieo);
-#endif
-
-#ifdef OMP
-#  pragma omp parallel
-  {
-#endif
-  int ioff;
-  int * hi;
-  su3 * restrict ALIGN up;
-  su3 * restrict ALIGN um;
-  color_spinor * restrict ALIGN sp;
-  color_spinor * restrict ALIGN sm;
-  color_spinor * restrict ALIGN rn;
-  
-#pragma disjoint(*sp, *sm, *rn, *up, *um, *l)
-  _declare_regs_rem();
-
-  if(ieo == 0){
-    ioff = 0;
-  } 
-  else{
-    ioff = (VOLUME+RAND)/2;
-  }
-
-#ifndef OMP
-  if(ieo == 0) {
-    hi = &g_hi[0];
-  }
-  else {
-    hi = &g_hi[16*VOLUME/2];
-  }
-
-#  if ((defined _GAUGE_COPY))
-  up=&g_gauge_field_copy[ioff][0];
-#  else
-  up=&g_gauge_field[(*hi)][0];
-#  endif
-  hi++;
-  sp=k+(*hi);
-  hi++;
-#endif
-
-  /**************** loop over all lattice sites ******************/
-#ifdef OMP
-#  pragma omp for
-#endif
-  for(int icx = ioff; icx < (VOLUME/2+ioff); icx++){
-#ifdef OMP
-    hi = &g_hi[16*icx];
-#  if ((defined _GAUGE_COPY))
-    up=&g_gauge_field_copy[icx][0];
-#  else
-    up=&g_gauge_field[(*hi)][0];
-#  endif
-    hi++;
-    sp=k+(*hi);
-    hi++;
-#endif
-    rn=l+(icx-ioff);
-    /*********************** direction +t ************************/
-#    if (!defined _GAUGE_COPY)
-    um=&g_gauge_field[(*hi)][0]; 
-#    else
-    um=up+1;
-#    endif
-    hi++;
-    sm=k+(*hi);
-    hi+=2;
-
-    //_hop_t_p_rem();
-
-    /*********************** direction -t ************************/
-#    if ((defined _GAUGE_COPY))
-    up=um+1;
-#    else
-    up+=1;
-#    endif
-    sp=k+(*hi);
-    hi++;
     
-    //_hop_t_m_rem();
-
-    /*********************** direction +1 ************************/
-#    ifndef _GAUGE_COPY
-    um=&g_gauge_field[(*hi)][1]; 
-#    else
-    um = up+1;
-#    endif
-    hi++;
-    sm=k+(*hi);
-    hi+=2;
-
-    //_hop_x_p_rem();
-
-    /*********************** direction -1 ************************/
-#    if ((defined _GAUGE_COPY))
-    up=um+1;
-#    else
-    up+=1;
-#    endif
-    sp=k+(*hi);
-    hi++;
-
-    //_hop_x_m_rem();
-
-    /*********************** direction +2 ************************/
-#    ifndef _GAUGE_COPY
-    um=&g_gauge_field[(*hi)][2]; 
-#    else
-    um= up+1;
-#    endif
-    hi++;
-    sm=k+(*hi);
-    hi+=2;
-
-    //_hop_y_p_rem();
-
-    /*********************** direction -2 ************************/
-#    if ((defined _GAUGE_COPY))
-    up=um+1;
-#    else
-    up+=1;
-#    endif
-    sp=k+(*hi);
-    hi++;
-
-    //_hop_y_m_rem();
-
-    /*********************** direction +3 ************************/
-#    ifndef _GAUGE_COPY
-    um=&g_gauge_field[(*hi)][3]; 
-#    else
-    um=up+1;
-#    endif
-    hi++;
-    sm=k+(*hi);
-    hi++;
-
-    //_hop_z_p_rem();
-
-    /*********************** direction -3 ************************/
-#ifndef OMP
-#  if ((defined _GAUGE_COPY))
-    up=um+1;
-#  else
-    up=&g_gauge_field[(*hi)][0];
-#  endif
-    hi++;
-    sp=k+(*hi);
-    hi++;
-#endif
-    //_hop_z_m_rem();
-
-    _store_res_rem();
+    /*
+    static int test_rem_done=0;
+    if(test_rem_done<=1 && g_proc_id==0 && icx==ioff)
+      {
+	printf("standard version\n");
+	printf("test00ri: %lg,%lg\n",creal(rn->s0.c0),cimag(rn->s0.c0));
+	printf("test11ri: %lg,%lg\n",creal(rn->s1.c1),cimag(rn->s1.c1));
+	printf("test22ri: %lg,%lg\n",creal(rn->s2.c2),cimag(rn->s2.c2));
+	printf("test32ri: %lg,%lg\n",creal(rn->s3.c2),cimag(rn->s3.c2));
+	test_rem_done++;
+      }
+    */
   }
 #ifdef OMP
   } /* OpenMP closing brace */
@@ -535,6 +377,19 @@ void Hopping_Matrix_Remapped(const int ieo, color_spinor * const l, color_spinor
     _hop_z_m_rem();
 
     _store_res_rem();
+
+    /*
+    static int test_rem_done=0;
+    if(test_rem_done<=1 && g_proc_id==0 && icx==ioff)
+      {
+	printf("remapped version\n");
+	printf("test00ri: %lg %lg\n",creal(rn->c0.sc0),cimag(rn->c0.sc0));
+	printf("test11ri: %lg %lg\n",creal(rn->c1.sc1),cimag(rn->c1.sc1));
+	printf("test22ri: %lg %lg\n",creal(rn->c2.sc2),cimag(rn->c2.sc2));
+	printf("test32ri: %lg %lg\n",creal(rn->c2.sc3),cimag(rn->c2.sc3));
+	test_rem_done++;
+      }
+    */
   }
 #ifdef OMP
   } /* OpenMP closing brace */
@@ -561,14 +416,14 @@ void Hopping_Matrix(const int ieo,spinor *const l,spinor *const k)
       global_remap_spinor_into_color_spinor(rema_l,l,VOLUME/2);
       //global_remap_color_spinor_into_spinor(l,rema_l,VOLUME/2);
       break;
-    case FAKE_APPL_REMAP:
-      Hopping_Matrix_Fake(ieo,rema_l,rema_k);
-      break;
     case DO_REMAP:
       global_remap_spinor_into_color_spinor(rema_k,k,VOLUME/2);
       Hopping_Matrix_Remapped(ieo,rema_l,rema_k);
       global_remap_color_spinor_into_spinor(k,rema_k,VOLUME/2);
       global_remap_color_spinor_into_spinor(l,rema_l,VOLUME/2);
+      break;
+    case DO_REMAP_NOT_REMAPPING:
+      Hopping_Matrix_Remapped(ieo,rema_l,rema_k);
       break;
     default:
       if(g_proc_id==0)

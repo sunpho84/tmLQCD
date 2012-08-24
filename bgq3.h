@@ -55,11 +55,11 @@
   {									\
     double temp[4]={+1,+1,-1,-1};					\
     r_pm_one = vec_ld(0L,temp);						\
-  }
+  }									\
 
 //########################################################################
 
-#define _complex_biload(r,c) (r)=vec_lda(0L,(double*)&(c));
+#define _complex_biload(r,c) (r)=vec_ld2(0L,(double*)c);
 #define _complex_perm(a,b,c) a=vec_perm(b,b,c);
 #define _complex_flip(a,b) _complex_perm(a,b,r_low_flip_patt);
 #define _complex_flipassign(a) _complex_flip(a,a);
@@ -69,8 +69,13 @@
   (r1) = vec_ld(0L, (double*)(&phi.sc2));
 
 #define _spin_store(phi,r0,r1)			\
-  vec_st(r0,0L, (double*)(&phi.sc0));		\
-  vec_st(r1,0L, (double*)(&phi.sc2));
+  vec_st(r0, 0L,(double*)(&phi.sc0));		\
+  vec_st(r1, 0L,(double*)(&phi.sc2));
+
+#define _color_flipassign(c0,c1,c2)		\
+  _complex_flipassign(c0);			\
+  _complex_flipassign(c1);			\
+  _complex_flipassign(c2);
 
 #define _color_spinor_load(c0h,c0l, c1h,c1l, c2h,c2l, phi)	\
   _spin_load(c0h,c0l, (phi)->c0);				\
@@ -79,38 +84,38 @@
 
 #define _color_spinor_load_flipping_low(c0h,c0l, c1h,c1l, c2h,c2l, phi)	\
   _color_spinor_load(c0h,c0l, c1h,c1l, c2h,c2l, phi)			\
-  _complex_flipassign(c0l);						\
-  _complex_flipassign(c1l);						\
-  _complex_flipassign(c2l);
+  _color_flipassign(c0l,c1l,c2l);
 
 #define _su3_load_rem(u00,u01,u02, u10,u11,u12, u20,u21,u22, u)		\
-  _complex_biload(u00,u->c00);						\
-  _complex_biload(u01,u->c01);						\
-  _complex_biload(u02,u->c02);						\
-  _complex_biload(u10,u->c10);						\
-  _complex_biload(u11,u->c11);						\
-  _complex_biload(u12,u->c12);						\
-  _complex_biload(u20,u->c20);						\
-  _complex_biload(u21,u->c21);						\
-  _complex_biload(u22,u->c22);
+  _complex_biload(u00,&u->c00);						\
+  _complex_biload(u01,&u->c01);						\
+  _complex_biload(u02,&u->c02);						\
+  _complex_biload(u10,&u->c10);						\
+  _complex_biload(u11,&u->c11);						\
+  _complex_biload(u12,&u->c12);						\
+  _complex_biload(u20,&u->c20);						\
+  _complex_biload(u21,&u->c21);						\
+  _complex_biload(u22,&u->c22);
 
 #define _su3_transp_load_rem(u00,u01,u02, u10,u11,u12, u20,u21,u22, u)	\
-  _complex_biload(u00,u->c00);						\
-  _complex_biload(u01,u->c10);						\
-  _complex_biload(u02,u->c20);						\
-  _complex_biload(u10,u->c01);						\
-  _complex_biload(u11,u->c11);						\
-  _complex_biload(u12,u->c21);						\
-  _complex_biload(u20,u->c02);						\
-  _complex_biload(u21,u->c12);						\
-  _complex_biload(u22,u->c22);
+  _complex_biload(u00,&u->c00);						\
+  _complex_biload(u01,&u->c10);						\
+  _complex_biload(u02,&u->c20);						\
+  _complex_biload(u10,&u->c01);						\
+  _complex_biload(u11,&u->c11);						\
+  _complex_biload(u12,&u->c21);						\
+  _complex_biload(u20,&u->c02);						\
+  _complex_biload(u21,&u->c12);						\
+  _complex_biload(u22,&u->c22);
 
 //########################################################################
 
-#define _store_res_rem()			\
-  _spin_store(rn->c0,r15,r18);			\
-  _spin_store(rn->c1,r16,r19);			\
-  _spin_store(rn->c2,r17,r20);
+#define _color_spinor_store(out, r0,r1, r2,r3, r4,r5)			\
+  _spin_store(out->c0,r0,r1);						\
+  _spin_store(out->c1,r2,r3);						\
+  _spin_store(out->c2,r4,r5);						\
+
+#define _store_res_rem()  _color_spinor_store(rn, r15,r18, r16,r19, r17,r20);
 
 //########################################################################
 
@@ -152,8 +157,8 @@
 
 #define _color_prod_bicomplex(out, u0,u1,u2, in0,in1,in2)	\
   _bicomplex_prod_quad_vec(out,u0,in0);				\
-  _bicomplex_prod_quad_vec(out,u1,in1);				\
-  _bicomplex_prod_quad_vec(out,u2,in2);
+  _bicomplex_summ_the_prod_quad_vec(out,u1,in1);		\
+  _bicomplex_summ_the_prod_quad_vec(out,u2,in2);
 
 #define _color_summ_the_prod_bicomplex(out, u0,u1,u2, in0,in1,in2)	\
   _bicomplex_summ_the_prod_quad_vec(out,u0,in0);			\
@@ -162,8 +167,8 @@
 
 #define _color_conj_prod_bicomplex(out, u0,u1,u2, in0,in1,in2)	\
   _bicomplex_conj_prod_quad_vec(out,u0,in0);			\
-  _bicomplex_conj_prod_quad_vec(out,u1,in1);			\
-  _bicomplex_conj_prod_quad_vec(out,u2,in2);
+  _bicomplex_conj_summ_the_prod_quad_vec(out,u1,in1);		\
+  _bicomplex_conj_summ_the_prod_quad_vec(out,u2,in2);
 
 #define _color_conj_summ_the_prod_bicomplex(out, u0,u1,u2, in0,in1,in2)	\
   _bicomplex_conj_summ_the_prod_quad_vec(out,u0,in0);			\
@@ -206,12 +211,12 @@
 
 //########################################################################
 
-#define _hop_t_p_rem()						\
-  _color_spinor_load(r0,r3, r1,r4, r2,r5, sp);			\
-  _color_addself(r0,r1,r2, r3,r4,r5);				\
-  _su3_prod_bicomplex(up);					\
-  _complex_biload(r_phase,ka0);					\
-  _vec_cmplx_mul_double2c(r15,r16,r17, r3,r4,r5, r_phase);	\
+#define _hop_t_p_rem()						     \
+  _color_spinor_load(r0,r3, r1,r4, r2,r5, sp);			     \
+  _color_addself(r0,r1,r2, r3,r4,r5);				     \
+  _su3_prod_bicomplex(up)					     \
+  _complex_biload(r_phase,&ka0);				     \
+  _vec_cmplx_mul_double2c(r15,r16,r17, r3,r4,r5, r_phase);	     \
   r18=r15;r19=r16;r20=r17;
 
 #define _hop_t_m_rem()						\
@@ -221,15 +226,16 @@
   _vec_cmplxcg_mul_double2c(r6,r7,r8, r3,r4,r5, r_phase);	\
   _color_addself(r15,r16,r17, r6,r7,r8);			\
   _color_subself(r18,r19,r20, r6,r7,r8);
-
+  
 
 #define _hop_x_p_rem()							\
   _color_spinor_load_flipping_low(r0,r3, r1,r4, r2,r5, sp);		\
   _color_i_mul_imag_part_addself(r0,r1,r2, r3,r4,r5, r_one);		\
   _su3_prod_bicomplex(up);						\
-  _complex_biload(r_phase,ka1);						\
+  _complex_biload(r_phase,&ka1);					\
   _vec_cmplx_mul_double2c(r6,r7,r8, r3,r4,r5, r_phase);			\
   _color_addself(r15,r16,r17, r6,r7,r8);				\
+  _color_flipassign(r6,r7,r8);						\
   _color_i_mul_imag_part_subself(r18,r19,r20, r6,r7,r8, r_one);
 
 #define _hop_x_m_rem()							\
@@ -238,6 +244,7 @@
   _su3_dag_prod_bicomplex(um);						\
   _vec_cmplxcg_mul_double2c(r6,r7,r8, r3,r4,r5, r_phase);		\
   _color_addself(r15,r16,r17, r6,r7,r8);				\
+  _color_flipassign(r6,r7,r8);						\
   _color_i_mul_imag_part_addself(r18,r19,r20, r6,r7,r8, r_one);
 
 
@@ -245,9 +252,10 @@
   _color_spinor_load_flipping_low(r0,r3, r1,r4, r2,r5, sp);	\
   _color_mul_addself(r0,r1,r2, r3,r4,r5, r_pm_one);		\
   _su3_prod_bicomplex(up);					\
-  _complex_biload(r_phase,ka2);					\
+  _complex_biload(r_phase,&ka2);				\
   _vec_cmplx_mul_double2c(r6,r7,r8, r3,r4,r5, r_phase);		\
   _color_addself(r15,r16,r17, r6,r7,r8);			\
+  _color_flipassign(r6,r7,r8);					\
   _color_mul_subself(r18,r19,r20, r6,r7,r8, r_pm_one);
 
 #define _hop_y_m_rem()						\
@@ -256,24 +264,43 @@
   _su3_dag_prod_bicomplex(um);					\
   _vec_cmplxcg_mul_double2c(r6,r7,r8, r3,r4,r5, r_phase);	\
   _color_addself(r15,r16,r17, r6,r7,r8);			\
+  _color_flipassign(r6,r7,r8);					\
   _color_mul_addself(r18,r19,r20, r6,r7,r8, r_pm_one);
 
 
 #define _hop_z_p_rem()							\
   _color_spinor_load(r0,r3, r1,r4, r2,r5, sp);				\
-  _color_i_mul_imag_part_subself(r0,r1,r2, r3,r4,r5, r_pm_one);		\
+  _color_i_mul_imag_part_addself(r0,r1,r2, r3,r4,r5, r_pm_one);		\
   _su3_prod_bicomplex(up);						\
-  _complex_biload(r_phase,ka3);						\
+  _complex_biload(r_phase,&ka3);					\
   _vec_cmplx_mul_double2c(r6,r7,r8, r3,r4,r5, r_phase);			\
   _color_addself(r15,r16,r17, r6,r7,r8);				\
-  _color_i_mul_imag_part_addself(r18,r19,r20, r6,r7,r8, r_pm_one);
+  _color_i_mul_imag_part_subself(r18,r19,r20, r6,r7,r8, r_pm_one);
 
 #define _hop_z_m_rem()							\
   _color_spinor_load(r0,r3, r1,r4, r2,r5, sm);				\
-  _color_i_mul_imag_part_addself(r0,r1,r2, r3,r4,r5, r_pm_one);		\
+  _color_i_mul_imag_part_subself(r0,r1,r2, r3,r4,r5, r_pm_one);		\
   _su3_dag_prod_bicomplex(um);						\
   _vec_cmplxcg_mul_double2c(r6,r7,r8, r3,r4,r5, r_phase);		\
   _color_addself(r15,r16,r17, r6,r7,r8);				\
-  _color_i_mul_imag_part_subself(r18,r19,r20, r6,r7,r8, r_pm_one);
+  _color_i_mul_imag_part_addself(r18,r19,r20, r6,r7,r8, r_pm_one);
+
+//#define _hop_t_p_rem()
+//#define _hop_t_m_rem()
+//#define _hop_x_p_rem()
+//#define _hop_x_m_rem()
+//#define _hop_y_p_rem()
+//#define _hop_y_m_rem()
+//#define _hop_z_p_rem()
+//#define _hop_z_m_rem()
+
+//#define _hop_t_p()
+//#define _hop_t_m()
+//#define _hop_x_p()
+//#define _hop_x_m()
+//#define _hop_y_p()
+//#define _hop_y_m()
+//#define _hop_z_p()
+//#define _hop_z_m()
 
 #endif

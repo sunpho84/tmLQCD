@@ -3,11 +3,11 @@
 
 #define NO_REMAP 0
 #define BENCH_REMAP 1
-#define FAKE_APPL_REMAP 2
-#define DO_REMAP 3
+#define DO_REMAP 2
+#define DO_REMAP_NOT_REMAPPING 3
 
 #ifdef _REMAP_C
- int g_remapping=NO_REMAP;
+ int g_remapping=DO_REMAP;
 #else
  extern int g_remapping;
 #endif

@@ -49,7 +49,6 @@
 
 #define Hopping_Matrix Hopping_Matrix_nocom
 #define Hopping_Matrix_Remapped Hopping_Matrix_Remapped_nocom
-#define Hopping_Matrix_Fake Hopping_Matrix_Fake_nocom
 #define Hopping_Matrix_Standard Hopping_Matrix_Standard_nocom
 #define _NO_COMM 1
 #ifdef _KOJAK_INST

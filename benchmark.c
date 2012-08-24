@@ -98,7 +98,7 @@ int main(int argc,char *argv[])
   int status = 0;
   
   static double t1,t2,dt,sdt,dts,qdt,sqdt;
-  static double norm_exec_time,remap_overhead_time,dirac_appl_overhead_time,remap_exec_time_saving;
+  static double norm_exec_time,remap_overhead_time,remap_exec_time_saving;
   double antioptaway=0.0;
 #ifdef MPI
   static double dt2;
@@ -253,18 +253,18 @@ int main(int argc,char *argv[])
 #endif
   
   if(even_odd_flag) {
-    for(g_remapping=0;g_remapping<3;g_remapping++)
+    for (k = 0; k < k_max; k++) {
+      random_spinor_field(g_spinor_field[k], VOLUME/2, 0);
+    }
+    for(g_remapping=0;g_remapping<4;g_remapping++)
       {
 	if(g_proc_id==0) printf("# Remapping level: %d\n",g_remapping);
 	/*initialize the pseudo-fermion fields*/
-	j_max=20;
+	j_max=256;
 	sdt=0.;
-	for (k = 0; k < k_max; k++) {
-	  random_spinor_field(g_spinor_field[k], VOLUME/2, 0);
-	}
 	
 	if(g_proc_id==0) printf("# Starting\n");
-	while(sdt < 30.) {
+	while(sdt < 10.) {
 #ifdef MPI
 	  MPI_Barrier(MPI_COMM_WORLD);
 #endif
@@ -304,12 +304,11 @@ int main(int argc,char *argv[])
 	    {
 	    case 0: norm_exec_time=sdt;break;
 	    case 1: remap_overhead_time=sdt-norm_exec_time;break;
-	    case 2: dirac_appl_overhead_time=norm_exec_time-sdt;break;
-	    case 3:
-	      remap_exec_time_saving=sdt-norm_exec_time-remap_overhead_time;
+	    case 2: remap_exec_time_saving=norm_exec_time-(sdt-remap_overhead_time);break;
+	    case 3: 
 	      printf("# remapping overhead: %lg%s\n",100*remap_overhead_time/norm_exec_time,"%");
-	      printf("# application overhead: %lg%s\n",100*dirac_appl_overhead_time/norm_exec_time,"%");
 	      printf("# remapping improvement: %lg%s\n",100*remap_exec_time_saving/norm_exec_time,"%");
+	      printf("# remapping improvement without remapping: %lg%s\n",100*(norm_exec_time-sdt)/norm_exec_time,"%");
 	      break;
 	    default:
 	      break;
@@ -328,53 +327,56 @@ int main(int argc,char *argv[])
 	}
 	
 #ifdef MPI
-	/* isolated computation */
-	t1 = gettime();
-	antioptaway=0.0;
-	for (j=0;j<j_max;j++) {
-	  for (k=0;k<k_max;k++) {
-	    Hopping_Matrix_nocom(0, g_spinor_field[k+k_max], g_spinor_field[k]);
-	    Hopping_Matrix_nocom(1, g_spinor_field[2*k_max], g_spinor_field[k+k_max]);
-	    antioptaway += creal(g_spinor_field[2*k_max][0].s0.c0);
-	  }
-	}
-	t2 = gettime();
-	dt2 = t2-t1;
-	/* compute the bandwidth */
-	dt=dts-dt2;
-	MPI_Allreduce (&dt, &sdt, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-	sdt=sdt/((double)g_nproc);
-	MPI_Allreduce (&dt2, &dt, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-	dt=dt/((double)g_nproc);
-	dt=1.0e6f*dt/((double)(k_max*j_max*(VOLUME)));
-	if(g_proc_id==0) {
-	  printf("# The following result is printed just to make sure that the calculation is not optimized away: %e\n",antioptaway);
-	  printf("# Communication switched off: \n# (%d Mflops [%d bit arithmetic])\n", (int)(1320.0f/dt),(int)sizeof(spinor)/3);
+	if(0)
+	  {
+	    /* isolated computation */
+	    t1 = gettime();
+	    antioptaway=0.0;
+	    for (j=0;j<j_max;j++) {
+	      for (k=0;k<k_max;k++) {
+		Hopping_Matrix_nocom(0, g_spinor_field[k+k_max], g_spinor_field[k]);
+		Hopping_Matrix_nocom(1, g_spinor_field[2*k_max], g_spinor_field[k+k_max]);
+		antioptaway += creal(g_spinor_field[2*k_max][0].s0.c0);
+	      }
+	    }
+	    t2 = gettime();
+	    dt2 = t2-t1;
+	    /* compute the bandwidth */
+	    dt=dts-dt2;
+	    MPI_Allreduce (&dt, &sdt, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+	    sdt=sdt/((double)g_nproc);
+	    MPI_Allreduce (&dt2, &dt, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+	    dt=dt/((double)g_nproc);
+	    dt=1.0e6f*dt/((double)(k_max*j_max*(VOLUME)));
+	    if(g_proc_id==0) {
+	      printf("# The following result is printed just to make sure that the calculation is not optimized away: %e\n",antioptaway);
+	      printf("# Communication switched off: \n# (%d Mflops [%d bit arithmetic])\n", (int)(1320.0f/dt),(int)sizeof(spinor)/3);
 #ifdef OMP
-	  printf("# Mflops per OpenMP thread ~ %d\n",(int)(1320.0f/(omp_num_threads*dt)));
+	      printf("# Mflops per OpenMP thread ~ %d\n",(int)(1320.0f/(omp_num_threads*dt)));
 #endif
-	  printf("\n"); 
-	  fflush(stdout);
-	}
-	sdt=sdt/((double)k_max);
-	sdt=sdt/((double)j_max);
-	sdt=sdt/((double)(2*SLICE));
-	if(g_proc_id==0) {
-	  printf("# The size of the package is %d bytes.\n",(SLICE)*192);
+	      printf("\n"); 
+	      fflush(stdout);
+	    }
+	    sdt=sdt/((double)k_max);
+	    sdt=sdt/((double)j_max);
+	    sdt=sdt/((double)(2*SLICE));
+	    if(g_proc_id==0) {
+	      printf("# The size of the package is %d bytes.\n",(SLICE)*192);
 #ifdef _USE_HALFSPINOR
-	  printf("# The bandwidth is %5.2f + %5.2f MB/sec\n", 192./sdt/1024/1024, 192./sdt/1024./1024);
+	      printf("# The bandwidth is %5.2f + %5.2f MB/sec\n", 192./sdt/1024/1024, 192./sdt/1024./1024);
 #else
-	  printf("# The bandwidth is %5.2f + %5.2f MB/sec\n", 2.*192./sdt/1024/1024, 2.*192./sdt/1024./1024);
+	      printf("# The bandwidth is %5.2f + %5.2f MB/sec\n", 2.*192./sdt/1024/1024, 2.*192./sdt/1024./1024);
 #endif
-	}
+	    }
 #endif
-	fflush(stdout);
+	    fflush(stdout);
+	  }
       }
   }
   else {
     /* the non even/odd case now */
     /*initialize the pseudo-fermion fields*/
-    j_max=20;
+    j_max=256;
     sdt=0.;
     for (k=0;k<k_max;k++) {
       random_spinor_field(g_spinor_field[k], VOLUME, 0);
